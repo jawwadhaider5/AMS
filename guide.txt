@@ -1,0 +1,22 @@
+change the dompdf path to base_public() in services provider file
+database setting
+mail setting
+MAIL_MAILER=smtp
+MAIL_HOST=sandbox.smtp.mailtrap.io
+MAIL_PORT=587
+MAIL_USERNAME=526bc31621bb31
+MAIL_PASSWORD=e2c60325ba6a44
+MAIL_ENCRYPTION='TLS'
+MAIL_FROM_ADDRESS="info@assetmanagementsystem.website"
+MAIL_FROM_NAME="${APP_NAME}"
+
+
+
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=alimustajab656@gmail.com
+MAIL_PASSWORD=PXaGoaYEuzItQE1
+MAIL_ENCRYPTION='TLS'
+MAIL_FROM_ADDRESS="info@assetmanagementsystem.website"
+MAIL_FROM_NAME="${APP_NAME}"
