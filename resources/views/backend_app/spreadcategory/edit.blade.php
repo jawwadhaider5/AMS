@@ -41,6 +41,7 @@
       <form action="{{ route('update.Spread',['id'=>$spreadcategory->id])}}" method="POST" enctype="multipart/form-data">
         @csrf
         @method('PUT')
+        
         <div class="row">
           <div class="col-lg-12 col-sm-12 col-md-12  mt-3">
             <label for="">System Description</label>
@@ -272,16 +273,22 @@
             <table class="table mt-3 table-bordered">
               <thead id="table-head" class="table-primary">
                 <tr>
-                  <td> IMCA Audit Type ({{ $spreadcategory->systemtype->name ?? '' }})</td>
+                  <td>IMCA Audit Type ({{ $spreadcategory->systemtype->name ?? '' }})</td>
+                  <td>Required</td>
                 </tr>
               </thead>
               <tbody id="table-body">
-                @foreach ($categories as $item)
+                @foreach ($all_available_categories as $item)
                 <tr>
                   <td>{{ $item->name }}</td>
+                  <td>
+                    <input type="checkbox" class="components_checkboxes" 
+                           value="{{ $item->id }}" 
+                           name="values[]"
+                           @if($item->is_selected) checked @endif />
+                  </td>
                 </tr>
                 @endforeach
-
               </tbody>
             </table>
           </div>
@@ -567,6 +574,15 @@ $("#manual_clear").on('click', function(e) {
         console.error(error);
       }
     });
+  });
+
+  // Handle category checkbox changes
+  $(document).on('change', 'input[name="values[]"]', function() {
+    var checkedCategories = $("#table-body input[name='values[]']:checked").map(function() {
+      return $(this).val();
+    }).toArray();
+    
+    console.log('Selected categories:', checkedCategories);
   });
 
 </script>

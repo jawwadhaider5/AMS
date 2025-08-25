@@ -162,8 +162,17 @@ class SpreadCategoryController extends Controller
         $spreadcategory['data_sheets'] = $spreadcategory['data_sheets'] ? explode('|', $spreadcategory['data_sheets']) : [];
 
 
+        // Get currently selected categories
         $included_data_ids = SpreadCategoryType::where('spread_category_id', $spreadcategory->id)->pluck('category_id')->toArray();
         $categories = Category::whereIn('id', $included_data_ids)->with('subcategories')->get();
+
+        // Get all available categories for the current audit type (system_type_id)
+        $all_available_categories = Category::where('parent_cat_id', $spreadcategory->system_type_id)->get();
+
+        // Mark categories as selected or not
+        foreach ($all_available_categories as $category) {
+            $category->is_selected = in_array($category->id, $included_data_ids);
+        }
 
         $final_assets = Assets::where('spread_category_id', $spreadcategory->id)->whereNotNull('spread_category_id')->with('tasks')->with('subcategory')->get();
         $systemtypes = SystemType::all();
@@ -212,7 +221,7 @@ class SpreadCategoryController extends Controller
         }
 
 
-        return view('backend_app.spreadcategory.edit', compact('spreadcategory', 'subcomponents', 'categories', 'assets', 'tasks', 'current_sys', 'systemtypes'));
+        return view('backend_app.spreadcategory.edit', compact('spreadcategory', 'subcomponents', 'categories', 'assets', 'tasks', 'current_sys', 'systemtypes', 'all_available_categories'));
     }
 
 
@@ -470,10 +479,6 @@ class SpreadCategoryController extends Controller
 
 
         try {
-
-
-
-
             $spreadcategory = SpreadCategory::find($id);
 
             $spreadcategory->system_description = $request->input('system_description');
@@ -591,6 +596,41 @@ class SpreadCategoryController extends Controller
 
             $result = $spreadcategory->save();
 
+            if ($result) {
+                $spreadcategory_id = $spreadcategory->id;
+
+                // Get new selected categories from form
+                $new_selected_categories = $request->input('values', []);
+
+                // Get previously selected categories before updating
+                $previously_selected_categories = SpreadCategoryType::where('spread_category_id', $spreadcategory_id)
+                    ->pluck('category_id')
+                    ->toArray();
+
+                // Find removed categories (categories that were previously selected but are not in the new selection)
+                $removed_categories = array_diff($previously_selected_categories, $new_selected_categories);
+
+                // Unassign assets from removed categories BEFORE updating relationships
+                if (!empty($removed_categories)) {
+                    $this->unassignAssetsFromCategories($removed_categories, $spreadcategory_id);
+                }
+
+                // Update category relationships (existing logic preserved)
+                if ($new_selected_categories !== null) {
+                    // Delete existing category relationships
+                    $existing_relationships = SpreadCategoryType::where('spread_category_id', $spreadcategory_id)->pluck('id');
+                    SpreadCategoryType::whereIn('id', $existing_relationships)->delete();
+
+                    // Create new category relationships
+                    foreach ($new_selected_categories as $category_id) {
+                        $spreadCategoryType = new SpreadCategoryType();
+                        $spreadCategoryType->spread_category_id = $spreadcategory_id;
+                        $spreadCategoryType->category_id = $category_id;
+                        $spreadCategoryType->save();
+                    }
+                }
+            }
+
             // if ($result) {
             //     $spreadcategory_id = $spreadcategory->id;
 
@@ -610,21 +650,21 @@ class SpreadCategoryController extends Controller
             //                 $spreadCategoryType->system_id = $request->input('system_id');
             //                 $spreadCategoryType->value = $value;
 
-            //                 if ($request->hasFile('files')) {
-            //                     foreach ($request->file('files') as $file) {
-            //                         $fileName = time() . '_' . $file->getClientOriginalName();
-            //                         $filePath = 'uploads/' . $fileName;
-            //                         Storage::disk('public')->put($filePath, file_get_contents($file));
-            //                         $spreadCategoryType->file = $fileName;
-            //                     }
-            //                 }
-            //                 $spreadCategoryType->save();
+            //         if ($request->hasFile('files')) {
+            //             foreach ($request->file('files') as $file) {
+            //                 $fileName = time() . '_' . $file->getClientOriginalName();
+            //                 $filePath = 'uploads/' . $fileName;
+            //                 Storage::disk('public')->put($filePath, file_get_contents($file));
+            //                 $spreadCategoryType->file = $fileName;
+            //             }
+            //         }
+            //         $spreadCategoryType->save();
             //             }
             //         }
 
             //         // return json_encode($dlt);
             //         $sctd = SpreadCategoryType::whereIn('id', $dlt)->get();
-            //         // return json_encode($sctd);
+            //         // return json_encode($dlt);
             //         foreach ($sctd as $dlted) {
             //             $dlted->delete();
             //         }
@@ -639,6 +679,43 @@ class SpreadCategoryController extends Controller
         }
     }
 
+    /**
+     * Unassign assets from removed categories
+     * This method handles the cleanup of assets when categories are removed from a spread category
+     */
+    private function unassignAssetsFromCategories($removed_category_ids, $spread_category_id)
+    {
+        // Get all subcategories of the removed categories
+        $removed_subcategory_ids = SubCategory::whereIn('category_id', $removed_category_ids)
+            ->pluck('id')
+            ->toArray();
+
+        // Find assets that need to be unassigned
+        // These are assets that are either directly assigned to removed categories
+        // or assigned to subcategories of removed categories
+        $assets_to_unassign = Assets::where(function($query) use ($removed_category_ids, $removed_subcategory_ids) {
+            $query->whereIn('category_id', $removed_category_ids)
+                  ->orWhereIn('sub_category_id', $removed_subcategory_ids);
+        })->where('spread_category_id', $spread_category_id)
+          ->get();
+
+        // Unassign each asset and its related tasks
+        foreach ($assets_to_unassign as $asset) {
+            // Unassign the asset from the category/subcategory
+            $asset->category_id = null;
+            $asset->sub_category_id = null;
+            $asset->spread_category_id = null;
+            $asset->save();
+
+            // Unassign related tasks from this asset
+            $asset->tasks()->update([
+                'spread_category_id' => null,
+                'system_id' => null
+            ]);
+        }
+
+        return true;
+    }
 
 
     public function transfersystem($id)
