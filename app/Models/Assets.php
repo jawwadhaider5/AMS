@@ -31,26 +31,42 @@ class Assets extends Model
     // }
 
     public function status(){ 
-        $tasks = Task::where('asset_id', $this->id)->get(); 
-        $certified_count = $expired_count = $expiring_count = $incomplete_count = 0;
+        $tasks = Task::where('asset_id', $this->id)->where('active', 1)->get(); 
+        
+        if ($tasks->isEmpty()) {
+            return 'Incomplete'; // No tasks = Incomplete
+        }
+        
+        $hasIncomplete = false;
+        $hasExpired = false;
+        $hasExpiring = false;
+        $hasCertified = false;
+        
         foreach ($tasks as $task) {
-            if ($task && $task->active==1) { 
-                if ($task->status() == 'Certified') {
-                    $certified_count++;
-                } else if ($task->status() == 'Expired') {
-                    $expired_count++;
-                } else if ($task->status() == 'Expiring') {
-                    $expiring_count++;
-                } else {
-                    $incomplete_count++;
-                } 
-            } else {
-                $incomplete_count++;
+            $taskStatus = $task->status();
+            if ($taskStatus == 'Incomplete') {
+                $hasIncomplete = true;
+            } elseif ($taskStatus == 'Expired') {
+                $hasExpired = true;
+            } elseif ($taskStatus == 'Expiring') {
+                $hasExpiring = true;
+            } elseif ($taskStatus == 'Certified') {
+                $hasCertified = true;
             }
         }
-        $temptask =new Task();
-        $statusLabel = $temptask->statusLabel($certified_count, $expired_count, $expiring_count, $incomplete_count);
-        return $statusLabel;
+        
+        // Priority-based status determination
+        if ($hasIncomplete) {
+            return 'Incomplete';
+        } elseif ($hasExpired) {
+            return 'Expired';
+        } elseif ($hasExpiring) {
+            return 'Expiring';
+        } elseif ($hasCertified) {
+            return 'Certified';
+        } else {
+            return 'Incomplete';
+        }
     }
     public function taskCount(){ 
         $taskcount = Task::where('asset_id', $this->id)->where('active', 1)->count();

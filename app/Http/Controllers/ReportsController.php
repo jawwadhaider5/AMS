@@ -46,20 +46,22 @@ class ReportsController extends Controller
       $incomplete = 0;
       $assets = Assets::where('spread_id', $sysid->id)->whereNotNull('spread_category_id')->get();
       foreach ($assets as $asset) {
-
-         $tasks = Task::where('asset_id', $asset->id)->get();
-         foreach ($tasks as $task) {
-            if ($task && $task->active==1) {
-               if ($task->status() == 'Certified') {
-                  $certified++;
-               } else if ($task->status() == 'Expired') {
-                  $expired++;
-               } else if ($task->status() == 'Expiring') {
-                  $expiring++;
-               } else {
-                  $incomplete++;
-               }
-            }
+         $assetStatus = $asset->status(); // Use the enhanced status method
+         
+         switch ($assetStatus) {
+            case 'Certified':
+               $certified++;
+               break;
+            case 'Expired':
+               $expired++;
+               break;
+            case 'Expiring':
+               $expiring++;
+               break;
+            case 'Incomplete':
+            default:
+               $incomplete++;
+               break;
          }
       }
 

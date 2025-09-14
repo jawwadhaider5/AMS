@@ -31,7 +31,7 @@
       <div class="card" style="min-height: 400px;overflow-y:scroll;">
         <div class="card-header d-flex justify-content-between">
           <div class="card-title mb-0">
-            <h5 class="mb-0">Tasks</h5>
+            <h5 class="mb-0">Assets</h5>
           </div>
         </div>
         <div class="card-body">
