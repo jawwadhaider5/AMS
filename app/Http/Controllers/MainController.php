@@ -46,28 +46,9 @@ class MainController extends Controller
         // $spreadcategorys = SpreadCategory::with('system', 'system.systemtype', 'system.location')->get();
         $spreads = System::with('systemtype', 'location')->get();
 
+        // Calculate status for each spread using the model method
         foreach ($spreads as $spread) {
-
-            $assets = Assets::where('spread_id', $spread->id)->whereNotNull('spread_category_id')->get();
-            $certified_count = $expired_count = $expiring_count = $incomplete_count = 0;
-            foreach ($assets as $asset) {
-                if ($asset) {
-                    if ($asset->status() == 'Certified') {
-                        $certified_count++;
-                    } else if ($asset->status() == 'Expired') {
-                        $expired_count++;
-                    } else if ($asset->status() == 'Expiring') {
-                        $expiring_count++;
-                    } else {
-                        $incomplete_count++;
-                    }
-                } else {
-                    $incomplete_count++;
-                }
-            }
-            $temptask = new Task();
-            $statusLabel = $temptask->statusLabel($certified_count, $expired_count, $expiring_count, $incomplete_count);
-            $spread['status'] = $statusLabel;
+            $spread['status'] = $spread->status();
         }
 
         // return view('backend_app.index', compact('categories', 'tasks', 'expiretasks', 'spreadcategorys', 'spreads', 'session'));
@@ -80,7 +61,7 @@ class MainController extends Controller
         $assets = Assets::whereNotNull('spread_category_id')->get();
         foreach ($assets as $asset) {
             $assetStatus = $asset->status(); // Use the enhanced status method
-            
+
             switch ($assetStatus) {
                 case 'Certified':
                     $certified++;

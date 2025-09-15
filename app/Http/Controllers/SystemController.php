@@ -27,38 +27,14 @@ class SystemController extends Controller
         $auth_id = Auth::user()->id;
         $session = SystemSession::where('user_id', $auth_id)->first(); 
         $current_sys = System::where('id', $session->system_id)->first(); 
-        $systems = System::with('systemtype')->withCount('spreadcategorytype')->with('assets')->get();
- 
+        $systems = System::with('systemtype')->withCount('spreadcategorytype')->get();
+
 
         $systemtypes = SystemType::all();
 
+        // Calculate status for each system using the model method
         foreach ($systems as $system) {
-            if (count($system->assets) > 0) {
-                $certified_count = $expired_count = $expiring_count = $incomplete_count = 0;
-
-                foreach ($system->assets as $asset) {
-                    // echo json_encode("Assets id: " . $asset->id . "  ===  asset status: " . $asset->status() . '<br>');
-                    // $system['status'] = $asset->status() ? $asset->status() : 'Incomplete';
-
-                    if ($asset->status() == 'Certified') {
-                        $certified_count++;
-                    } else if ($asset->status() == 'Expired') {
-                        $expired_count++;
-                    } else if ($asset->status() == 'Expiring') {
-                        $expiring_count++;
-                    } else if ($asset->status() == 'Incomplete') {
-                        $incomplete_count++;
-                    } else {
-                        $incomplete_count++;
-                    }
-                    $temptask = new Task();
-                    $statusLabel = $temptask->statusLabel($certified_count, $expired_count, $expiring_count, $incomplete_count);
-
-                    $system['status'] = $statusLabel;
-                }
-            } else {
-                $system['status'] = 'Incomplete';
-            }
+            $system['status'] = $system->status();
         }
         // return json_encode($system);
         // return 0;
