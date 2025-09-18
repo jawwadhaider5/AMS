@@ -916,4 +916,50 @@ class SpreadCategoryController extends Controller
             return back()->with('error', "Something went wrong!");
         }
     }
+
+    /**
+     * Get subcomponents for a specific category
+     */
+    public function getSubcomponentsByCategory(Request $request)
+    {
+        try {
+            $categoryId = $request->input('category_id');
+            $spreadcategoryId = $request->input('spreadcategory_id');
+
+            // Get the category with its subcategories
+            $category = Category::where('id', $categoryId)
+                ->with('subcategories')
+                ->first();
+
+            if (!$category) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Category not found'
+                ]);
+            }
+
+            $subcomponents = [];
+
+            foreach ($category->subcategories as $subcat) {
+                $subcomp = [
+                    "id" => $subcat->id,
+                    "name" => $subcat->name,
+                    "status" => $subcat->status(),
+                    "asset_count" => $subcat->assetCount2($spreadcategoryId),
+                ];
+                $subcomponents[] = $subcomp;
+            }
+
+            return response()->json([
+                'success' => true,
+                'subcomponents' => $subcomponents
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading subcomponents: ' . $e->getMessage()
+            ]);
+        }
+    }
 }

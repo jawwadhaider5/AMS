@@ -236,10 +236,11 @@ Route::prefix('subcategory')->group(function(){
             Route::get('/unassign-system/{id}', [SpreadCategoryController::class, 'unassignSystem'])->name('un-assign-system');
             Route::get('/get-all-unassigned-assets', [SpreadCategoryController::class, 'getUnAssignedAssets']);
             Route::get('/assign-asset-to-system', [SpreadCategoryController::class, 'assignAssetToSystem']);
+            Route::get('/get-subcomponents-by-category', [SpreadCategoryController::class, 'getSubcomponentsByCategory']);
 
-            
-        });    
-        
+
+        });
+
     Route::prefix('tasktype')->group(function(){
         Route::get('all',[TaskTypeController::class,'index'])->name('all-tasktype');
         Route::get('add',[TaskTypeController::class,'create'])->name('add-tasktype');

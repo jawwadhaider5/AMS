@@ -160,13 +160,13 @@
           <table class="table mt-3 table-bordered">
             <thead id="table-head" class="table-primary">
               <tr>
-                <td>Spread type ({{ $spreadcategory->systemtype->name ?? '' }})</td>
+                <td>Spread type ({{ $spreadcategory->systemtype->name ?? '' }}) <button id="show-all-btn" class="btn btn-sm btn-primary float-end" style="display: none;"><i class="fas fa-list"></i> Show All</button></td>
               </tr>
             </thead>
             <tbody id="table-body">
               @foreach ($categories as $item)
               <tr>
-                <td>{{ $item->name }}</td>
+                <td class="spread-type-item" data-category-id="{{ $item->id }}" style="cursor: pointer; transition: background-color 0.2s;">{{ $item->name }}</td>
               </tr>
               @endforeach
 
@@ -208,8 +208,18 @@
 
 
 @push('scripts')
+<style>
+  .spread-type-item:hover {
+    background-color: #f8f9fa !important;
+  }
+  .spread-type-item.table-warning {
+    background-color: #fff3cd !important;
+  }
+</style>
 <script>
   $(document).ready(function() {
+    // Store original subcomponents data
+    var originalSubcomponents = @json($subcomponents);
  
 
       // Event listener for the "Assign Asset" button click
@@ -324,12 +334,82 @@
       loadassets(subcomponentId, spreadcategoryid);
     });
 
+    // Handle spread type item clicks
+    $(document).on('click', '.spread-type-item', function() {
+      let categoryId = $(this).data('category-id');
+      let spreadcategoryId = {{ $spreadcategory->id }};
+      
+      // Remove active class from all spread type items
+      $('.spread-type-item').removeClass('table-warning');
+      // Add active class to clicked item
+      $(this).addClass('table-warning');
+      
+      // Show the "Show All" button since we're filtering
+      $('#show-all-btn').show();
+      
+      // Load subcomponents for this category
+      loadSubcomponentsForCategory(categoryId, spreadcategoryId);
+    });
 
- 
-  
+    // Handle "Show All" button click
+    $('#show-all-btn').on('click', function() {
+      // Remove active class from all spread type items
+      $('.spread-type-item').removeClass('table-warning');
+      
+      // Hide the "Show All" button since we're showing all
+      $(this).hide();
+      
+      // Load all subcomponents (original data)
+      loadAllSubcomponents();
+    });
 
+    function loadSubcomponentsForCategory(categoryId, spreadcategoryId) {
+      $.ajax({
+        url: '/spreadcategory/get-subcomponents-by-category',
+        type: 'GET',
+        data: {
+          category_id: categoryId,
+          spreadcategory_id: spreadcategoryId
+        },
+        success: function(response) {
+          if (response.success) {
+            updateSubcomponentDisplay(response.subcomponents);
+          } else {
+            alert('No subcomponents found for this spread type');
+          }
+        },
+        error: function(error) {
+          console.error('Error loading subcomponents:', error);
+          alert('Error loading subcomponents');
+        }
+      });
+    }
 
- 
+    function updateSubcomponentDisplay(subcomponents) {
+      let tbody = $('#sub-component-body');
+      tbody.empty();
+      
+      if (subcomponents.length === 0) {
+        tbody.append('<tr><td colspan="2" class="text-center text-muted">No sub-components found</td></tr>');
+        return;
+      }
+      
+      subcomponents.forEach(function(item) {
+        let row = `
+          <tr>
+            <td class="subcomponent" data-id="${item.id}" data-spreadcategoryid="{{ $spreadcategory->id }}">${item.name} <span class="float-end">(${item.asset_count})</span></td>
+            <td>${item.status}</td>
+          </tr>
+          <tr id="assets-${item.id}" class="d-none">
+          </tr>
+        `;
+        tbody.append(row);
+      });
+    }
+
+    function loadAllSubcomponents() {
+      updateSubcomponentDisplay(originalSubcomponents);
+    }
 
   });
 </script>
